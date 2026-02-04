@@ -77,7 +77,7 @@ interface MasterFormProps {
 
 function MasterForm({ master, onSave, onCancel }: MasterFormProps) {
   const [name, setName] = useState(master?.name || '')
-
+  const [selectedServices, setSelectedServices] = useState<string[]>([])
   const handleSubmit = () => {
     if (!name.trim()) return
     onSave(name.trim())
