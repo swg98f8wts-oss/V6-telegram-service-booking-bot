@@ -5,20 +5,35 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    const {
-      masterId,
-      date,
-      time,
-      serviceId,
-      userId,
-      userName,
-      userUsername,
-      userPlatform,
-      masterName,
-      serviceName,
-    } = body
+    // принимаем оба варианта
+    const masterId = body.masterId
+    const date = body.date
+    const time = body.time
+    const serviceId = body.serviceId
+    const masterName = body.masterName
+    const serviceName = body.serviceName
 
-    // ❌ запрещаем запись из обычного браузера
+    const userId =
+      body.userId ?? body.user?.id ?? null
+
+    const userName =
+      body.userName ??
+      body.user?.name ??
+      body.user?.first_name ??
+      null
+
+    const userUsername =
+      body.userUsername ??
+      body.username ??
+      body.user?.username ??
+      null
+
+    const userPlatform =
+      body.userPlatform ??
+      body.platform ??
+      null
+
+    // запрещаем web-запись
     if (!userPlatform || userPlatform === 'web') {
       return NextResponse.json(
         { error: 'Web booking is not allowed' },
@@ -26,7 +41,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // базовая валидация (username НЕ обязателен)
     if (
       !masterId ||
       !date ||
@@ -43,7 +57,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // username может отсутствовать (VK)
     const safeUsername =
       userUsername && userUsername.length > 0
         ? userUsername
@@ -72,7 +85,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(booking)
   } catch (error) {
     console.error('BOOKING ERROR:', error)
-
     return NextResponse.json(
       { error: 'Invalid request' },
       { status: 400 }
