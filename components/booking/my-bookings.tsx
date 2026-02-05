@@ -2,43 +2,89 @@
 
 import { Booking } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { Calendar, Clock, Scissors, User, X, AlertCircle } from 'lucide-react'
+import {
+  Calendar,
+  Clock,
+  X,
+  AlertCircle,
+} from 'lucide-react'
 import useSWR, { mutate } from 'swr'
 import { useState } from 'react'
 
 interface MyBookingsProps {
-  userId: string
+  userId: string | number | null | undefined
   onClose: () => void
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+const fetcher = async (url: string) => {
+  const res = await fetch(url)
 
-const MONTHS_RU_GEN = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
-]
+  if (!res.ok) {
+    throw new Error('Failed to fetch bookings')
+  }
 
-function formatDateRu(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number)
-  return `${day} ${MONTHS_RU_GEN[month - 1]}`
+  const data = await res.json()
+
+  return Array.isArray(data) ? data : []
 }
 
-export function MyBookings({ userId, onClose }: MyBookingsProps) {
-  const { data: bookings, isLoading, error } = useSWR<Booking[]>(
-    `/api/bookings?userId=${userId}`,
+const MONTHS_RU_GEN = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
+]
+
+function formatDateRu(dateStr?: string): string {
+  if (!dateStr) return '—'
+
+  const [year, month, day] = dateStr.split('-').map(Number)
+
+  if (!day || !month) return '—'
+
+  return ${day} ${MONTHS_RU_GEN[month - 1]}
+}
+
+export function MyBookings({
+  userId,
+  onClose,
+}: MyBookingsProps) {
+  // ❗️ если пользователя нет — вообще не делаем запрос
+  const shouldFetch = Boolean(userId)
+
+  const {
+    data: bookings = [],
+    isLoading,
+    error,
+  } = useSWR<Booking[]>(
+    shouldFetch
+      ? /api/bookings?userId=${userId}
+      : null,
     fetcher
   )
-  const [cancelingId, setCancelingId] = useState<string | null>(null)
-  const [confirmCancel, setConfirmCancel] = useState<string | null>(null)
+
+  const [cancelingId, setCancelingId] =
+    useState<string | null>(null)
+  const [confirmCancel, setConfirmCancel] =
+    useState<string | null>(null)
 
   const handleCancel = async (bookingId: string) => {
     setCancelingId(bookingId)
+
     try {
       const response = await fetch(
-        `/api/bookings?bookingId=${bookingId}&userId=${userId}`,
+        /api/bookings?bookingId=${bookingId}&userId=${userId},
         { method: 'DELETE' }
       )
-      
+
       if (response.ok) {
         mutate(`/api/bookings?userId=${userId}`)
       }
@@ -48,7 +94,8 @@ export function MyBookings({ userId, onClose }: MyBookingsProps) {
     }
   }
 
-  const isPast = (date: string, time: string) => {
+  const isPast = (date?: string, time?: string) => {
+    if (!date || !time) return false
     const bookingDate = new Date(`${date}T${time}`)
     return bookingDate < new Date()
   }
@@ -56,7 +103,9 @@ export function MyBookings({ userId, onClose }: MyBookingsProps) {
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
       <header className="flex items-center justify-between p-4 border-b">
-        <h1 className="text-lg font-semibold">Мои записи</h1>
+        <h1 className="text-lg font-semibold">
+          Мои записи
+        </h1>
         <button
           onClick={onClose}
           className="p-2 rounded-lg hover:bg-secondary transition-colors"
@@ -64,7 +113,7 @@ export function MyBookings({ userId, onClose }: MyBookingsProps) {
           <X className="w-5 h-5" />
         </button>
       </header>
-      
+
       <div className="flex-1 overflow-y-auto p-4">
         {isLoading ? (
           <div className="space-y-3">
@@ -78,13 +127,21 @@ export function MyBookings({ userId, onClose }: MyBookingsProps) {
         ) : error ? (
           <div className="text-center py-12 text-muted-foreground">
             <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>Ошибка загрузки</p>
+            <p>Ошибка загрузки записей</p>
           </div>
-        ) : bookings && bookings.length > 0 ? (
+        ) : bookings.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p>У вас пока нет записей</p>
+          </div>
+        ) : (
           <div className="space-y-3">
             {bookings.map((booking) => {
-              const past = isPast(booking.date, booking.time)
-              
+              const past = isPast(
+                booking.date,
+                booking.time
+              )
+
               return (
                 <div
                   key={booking.id}
@@ -95,22 +152,30 @@ export function MyBookings({ userId, onClose }: MyBookingsProps) {
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
-                      <p className="font-medium">{booking.serviceName}</p>
+                      <p className="font-medium">
+                        {booking.serviceName ??
+                          booking.service_name ??
+                          '—'}
+                      </p>
                       <p className="text-sm text-muted-foreground">
-                        {booking.masterName}
+                        {booking.masterName ??
+                          booking.master_name ??
+                          '—'}
                       </p>
                     </div>
-                    {past ? (
-                      <span className="text-xs bg-secondary px-2 py-1 rounded-full text-muted-foreground">
-                        Прошедшая
-                      </span>
-                    ) : (
-                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                        Активная
-                      </span>
-                    )}
+
+                    <span
+                      className={cn(
+                        'text-xs px-2 py-1 rounded-full',
+                        past
+                          ? 'bg-secondary text-muted-foreground'
+                          : 'bg-primary/10 text-primary'
+                      )}
+                    >
+                      {past ? 'Прошедшая' : 'Активная'}
+                    </span>
                   </div>
-                  
+
                   <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-4 h-4" />
@@ -118,22 +183,30 @@ export function MyBookings({ userId, onClose }: MyBookingsProps) {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-4 h-4" />
-                      {booking.time}
+                      {booking.time ?? '—'}
                     </div>
                   </div>
-                  
-                  {!past && (
-                    confirmCancel === booking.id ? (
+
+                  {!past &&
+                    (confirmCancel === booking.id ? (
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleCancel(booking.id)}
-                          disabled={cancelingId === booking.id}
+                          onClick={() =>
+                            handleCancel(booking.id)
+                          }
+                          disabled={
+                            cancelingId === booking.id
+                          }
                           className="flex-1 py-2 px-3 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium"
                         >
-                          {cancelingId === booking.id ? 'Отмена...' : 'Подтвердить отмену'}
+                          {cancelingId === booking.id
+                            ? 'Отмена...'
+                            : 'Подтвердить отмену'}
                         </button>
                         <button
-                          onClick={() => setConfirmCancel(null)}
+                          onClick={() =>
+                            setConfirmCancel(null)
+                          }
                           className="py-2 px-3 rounded-lg border text-sm font-medium"
                         >
                           Нет
@@ -141,21 +214,17 @@ export function MyBookings({ userId, onClose }: MyBookingsProps) {
                       </div>
                     ) : (
                       <button
-                        onClick={() => setConfirmCancel(booking.id)}
+                        onClick={() =>
+                          setConfirmCancel(booking.id)
+                        }
                         className="w-full py-2 rounded-lg border border-destructive text-destructive text-sm font-medium hover:bg-destructive/5 transition-colors"
                       >
                         Отменить запись
                       </button>
-                    )
-                  )}
+                    ))}
                 </div>
               )
             })}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>У вас пока нет записей</p>
           </div>
         )}
       </div>
