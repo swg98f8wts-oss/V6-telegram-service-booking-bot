@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react'
-import bridge from '@vkontakte/vk-bridge'
+'use client'
 
-interface TelegramUser {
+import { useEffect, useState } from 'react'
+
+type Platform = 'telegram' | 'vk' | 'web'
+
+type TelegramUser = {
   id: number
-  first_name: string
+  first_name?: string
   last_name?: string
   username?: string
-  language_code?: string
 }
 
-interface VkUser {
+type VkUser = {
   id: number
   first_name: string
   last_name: string
@@ -17,127 +19,80 @@ interface VkUser {
   domain?: string
 }
 
-interface TelegramWebApp {
-  ready: () => void
-  expand: () => void
-  close: () => void
-  MainButton: {
-    text: string
-    color: string
-    textColor: string
-    isVisible: boolean
-    isActive: boolean
-    show: () => void
-    hide: () => void
-    onClick: (callback: () => void) => void
-    offClick: (callback: () => void) => void
-    enable: () => void
-    disable: () => void
-    setText: (text: string) => void
-    setParams: (params: { text?: string; color?: string; text_color?: string; is_active?: boolean; is_visible?: boolean }) => void
-  }
-  BackButton: {
-    isVisible: boolean
-    show: () => void
-    hide: () => void
-    onClick: (callback: () => void) => void
-    offClick: (callback: () => void) => void
-  }
-  initDataUnsafe: {
-    user?: TelegramUser
-    query_id?: string
-    auth_date?: number
-    hash?: string
-  }
-  colorScheme: 'light' | 'dark'
-  themeParams: {
-    bg_color?: string
-    text_color?: string
-    hint_color?: string
-    link_color?: string
-    button_color?: string
-    button_text_color?: string
-  }
-  HapticFeedback: {
-    impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void
-    notificationOccurred: (type: 'error' | 'success' | 'warning') => void
-    selectionChanged: () => void
-  }
-}
-
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp: TelegramWebApp
-    }
-  }
-}
-
-type Platform = 'telegram' | 'vk' | 'web'
-
 export function usePlatform() {
-  const [webApp, setWebApp] = useState<TelegramWebApp | null>(null)
-  const [user, setUser] = useState<TelegramUser | null>(null)
-  const [vkUser, setVkUser] = useState<VkUser | null>(null)
   const [platform, setPlatform] = useState<Platform>('web')
-  const [userUsername, setUserUsername] = useState<string | null>(null)
+  const [user, setUser] = useState<TelegramUser | VkUser | null>(null)
+  const [username, setUsername] = useState<string | null>(null)
   const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
     const init = async () => {
-      const tg = window?.Telegram?.WebApp
+      /* ---------- TELEGRAM ---------- */
+      const tg = (window as any)?.Telegram?.WebApp
       if (tg) {
         tg.ready()
         tg.expand()
-        const tgUser = tg.initDataUnsafe?.user || null
-        setWebApp(tg)
-        setUser(tgUser)
+
+        const tgUser: TelegramUser | null =
+          tg.initDataUnsafe?.user ?? null
+
         setPlatform('telegram')
-        setUserUsername(tgUser?.username ? `@${tgUser.username}` : null)
+        setUser(tgUser)
+
+        if (tgUser?.username) {
+          setUsername(`@${tgUser.username}`)
+        } else {
+          setUsername(null)
+        }
+
         setIsReady(true)
         return
       }
 
+      /* ---------- VK ---------- */
       try {
+        const bridgeModule = await import('@vkontakte/vk-bridge')
+        const bridge = bridgeModule.default
+
         await bridge.send('VKWebAppInit')
-        const vkInfo: VkUser = await bridge.send('VKWebAppGetUserInfo')
-        setVkUser(vkInfo)
+
+        const vkUser: VkUser = await bridge.send(
+          'VKWebAppGetUserInfo'
+        )
+
         setPlatform('vk')
-        const vkName = vkInfo.screen_name || vkInfo.domain
-        setUserUsername(vkName ? `@${vkName}` : null)
+        setUser(vkUser)
+
+        const vkUsername =
+          vkUser.screen_name || vkUser.domain || null
+
+        setUsername(vkUsername ? `@${vkUsername}` : null)
+
         setIsReady(true)
         return
-      } catch {
-        // fall through to demo user
+      } catch (e) {
+        console.warn('VK init failed or not VK environment', e)
       }
 
-      setUser({
-        id: 123456789,
-        first_name: 'Тест',
-        last_name: 'Пользователь',
-        username: 'test_user',
-      })
+      /* ---------- WEB FALLBACK ---------- */
       setPlatform('web')
-      setUserUsername('@test_user')
+      setUser({
+        id: 0,
+        first_name: 'Web',
+        last_name: 'User',
+        username: 'web_user',
+      })
+      setUsername('@web_user')
       setIsReady(true)
     }
 
     void init()
   }, [])
 
-  const resolvedUser = user || vkUser
-  const resolvedName = resolvedUser
-    ? `${resolvedUser.first_name}${resolvedUser.last_name ? ` ${resolvedUser.last_name}` : ''}`
-    : 'Гость'
-
   return {
     platform,
+    user,
+    username,
     isReady,
-    userId: resolvedUser ? resolvedUser.id.toString() : 'demo-user',
-    userName: resolvedName,
-    userUsername,
-    webApp,
-    rawUser: user,
-    rawVkUser: vkUser,
   }
 }
