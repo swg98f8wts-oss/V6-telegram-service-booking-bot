@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 type Step = 'master' | 'service' | 'date' | 'time' | 'confirm' | 'success'
 
 export function BookingFlow() {
-  const { userId, userName, userUsername, platform, isReady } = usePlatform()
+  const { user, platform, isReady } = usePlatform()
   const [step, setStep] = useState<Step>('master')
   const [selectedMaster, setSelectedMaster] = useState<Master | null>(null)
   const [selectedService, setSelectedService] = useState<Service | null>(null)
