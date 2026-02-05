@@ -4,48 +4,45 @@ import { useEffect, useState } from 'react'
 
 type Platform = 'telegram' | 'vk' | 'web'
 
-type TelegramUser = {
-  id: number
-  first_name?: string
-  last_name?: string
-  username?: string
-}
-
-type VkUser = {
+type AppUser = {
   id: number
   first_name: string
-  last_name: string
-  screen_name?: string
-  domain?: string
+  last_name?: string
+  username?: string | null
 }
 
 export function usePlatform() {
   const [platform, setPlatform] = useState<Platform>('web')
-  const [user, setUser] = useState<TelegramUser | VkUser | null>(null)
-  const [username, setUsername] = useState<string | null>(null)
+  const [user, setUser] = useState<AppUser | null>(null)
   const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
     const init = async () => {
       /* ---------- TELEGRAM ---------- */
       const tg = (window as any)?.Telegram?.WebApp
-const isTelegram =
-  tg &&
-  tg.initDataUnsafe &&
-  Object.keys(tg.initDataUnsafe).length > 0
 
-if (isTelegram) {
-  tg.ready()
-  tg.expand()
+      const isTelegram =
+        tg &&
+        tg.initDataUnsafe &&
+        tg.initDataUnsafe.user
 
-  const tgUser = tg.initDataUnsafe.user ?? null
+      if (isTelegram) {
+        tg.ready()
+        tg.expand()
 
-  setPlatform('telegram')
-  setUser(tgUser)
-  setUsername(tgUser?.username ? '@${tgUser.username}' : null)
-  setIsReady(true)
-  return
-}
+        const tgUser = tg.initDataUnsafe.user
+
+        setPlatform('telegram')
+        setUser({
+          id: tgUser.id,
+          first_name: tgUser.first_name,
+          last_name: tgUser.last_name,
+          username: tgUser.username ?? null,
+        })
+
+        setIsReady(true)
+        return
+      }
 
       /* ---------- VK ---------- */
       try {
@@ -54,17 +51,15 @@ if (isTelegram) {
 
         await bridge.send('VKWebAppInit')
 
-        const vkUser: VkUser = await bridge.send(
-          'VKWebAppGetUserInfo'
-        )
+        const vkUser = await bridge.send('VKWebAppGetUserInfo')
 
         setPlatform('vk')
-        setUser(vkUser)
-
-        const vkUsername =
-          vkUser.screen_name || vkUser.domain || null
-
-        setUsername(vkUsername ? `@${vkUsername}` : null)
+        setUser({
+          id: vkUser.id,
+          first_name: vkUser.first_name,
+          last_name: vkUser.last_name,
+          username: vkUser.screen_name || vkUser.domain || null,
+        })
 
         setIsReady(true)
         return
@@ -72,10 +67,9 @@ if (isTelegram) {
         console.warn('VK init failed or not VK environment', e)
       }
 
-      /* ---------- WEB FALLBACK ---------- */
+      /* ---------- WEB ---------- */
       setPlatform('web')
       setUser(null)
-      setUsername(null)
       setIsReady(true)
     }
 
@@ -85,7 +79,6 @@ if (isTelegram) {
   return {
     platform,
     user,
-    username,
     isReady,
   }
 }
