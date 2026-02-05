@@ -66,7 +66,7 @@ export function MyBookings({
     error,
   } = useSWR<Booking[]>(
     shouldFetch
-      ? /api/bookings?userId=${userId}
+      ? '/api/bookings?userId=${userId}'
       : null,
     fetcher
   )
