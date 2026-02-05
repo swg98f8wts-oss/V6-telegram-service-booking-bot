@@ -74,13 +74,8 @@ if (isTelegram) {
 
       /* ---------- WEB FALLBACK ---------- */
       setPlatform('web')
-      setUser({
-        id: 0,
-        first_name: 'Web',
-        last_name: 'User',
-        username: 'web_user',
-      })
-      setUsername('@web_user')
+      setUser(null)
+      setUsername(null)
       setIsReady(true)
     }
 
