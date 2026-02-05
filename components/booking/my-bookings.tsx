@@ -81,7 +81,7 @@ export function MyBookings({
 
     try {
       const response = await fetch(
-        /api/bookings?bookingId=${bookingId}&userId=${userId},
+        '/api/bookings?bookingId=${bookingId}&userId=${userId},'
         { method: 'DELETE' }
       )
 
