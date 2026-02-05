@@ -15,9 +15,13 @@ export async function POST(request: NextRequest) {
 
   const userId = body.userId ?? body.user?.id
   const userName =
-    body.userName ??
-    body.user?.name ??
-    body.user?.first_name
+  body.userName ??
+  body.user?.name ??
+  body.user?.first_name ??
+  body.user?.firstName ??
+  (body.user?.first_name && body.user?.last_name
+    ? `${body.user.first_name} ${body.user.last_name}`
+    : null)
 
   const userUsername =
     body.userUsername ??
@@ -38,21 +42,43 @@ export async function POST(request: NextRequest) {
   })
 
   if (
-    !masterId ||
-    !date ||
-    !time ||
-    !serviceId ||
-    !userId ||
-    !userName ||
-    !masterName ||
-    !serviceName
-  ) {
-    console.error('❌ VALIDATION FAILED')
-    return NextResponse.json(
-      { error: 'Missing required fields', debug: body },
-      { status: 400 }
-    )
-  }
+  !masterId ||
+  !date ||
+  !time ||
+  !serviceId ||
+  !userId ||
+  !userName ||
+  !masterName ||
+  !serviceName
+) {
+  console.error('❌ VALIDATION FAILED', {
+    masterId,
+    date,
+    time,
+    serviceId,
+    userId,
+    userName,
+    masterName,
+    serviceName,
+  })
+
+  return NextResponse.json(
+    {
+      error: 'Missing required fields',
+      debug: {
+        masterId,
+        date,
+        time,
+        serviceId,
+        userId,
+        userName,
+        masterName,
+        serviceName,
+      },
+    },
+    { status: 400 }
+  )
+}
 
   const safeUsername =
     userUsername && userUsername.length > 0
