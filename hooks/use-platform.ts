@@ -29,25 +29,23 @@ export function usePlatform() {
     const init = async () => {
       /* ---------- TELEGRAM ---------- */
       const tg = (window as any)?.Telegram?.WebApp
-      if (tg) {
-        tg.ready()
-        tg.expand()
+const isTelegram =
+  tg &&
+  tg.initDataUnsafe &&
+  Object.keys(tg.initDataUnsafe).length > 0
 
-        const tgUser: TelegramUser | null =
-          tg.initDataUnsafe?.user ?? null
+if (isTelegram) {
+  tg.ready()
+  tg.expand()
 
-        setPlatform('telegram')
-        setUser(tgUser)
+  const tgUser = tg.initDataUnsafe.user ?? null
 
-        if (tgUser?.username) {
-          setUsername(`@${tgUser.username}`)
-        } else {
-          setUsername(null)
-        }
-
-        setIsReady(true)
-        return
-      }
+  setPlatform('telegram')
+  setUser(tgUser)
+  setUsername(tgUser?.username ? @${tgUser.username} : null)
+  setIsReady(true)
+  return
+}
 
       /* ---------- VK ---------- */
       try {
