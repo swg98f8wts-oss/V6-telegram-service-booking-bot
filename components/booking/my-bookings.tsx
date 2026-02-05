@@ -50,7 +50,7 @@ function formatDateRu(dateStr?: string): string {
 
   if (!day || !month) return '—'
 
-  return ${day} ${MONTHS_RU_GEN[month - 1]}
+  return '${day} ${MONTHS_RU_GEN[month - 1]}'
 }
 
 export function MyBookings({
