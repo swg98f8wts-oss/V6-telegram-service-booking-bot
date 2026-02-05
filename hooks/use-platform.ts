@@ -42,7 +42,7 @@ if (isTelegram) {
 
   setPlatform('telegram')
   setUser(tgUser)
-  setUsername(tgUser?.username ? @${tgUser.username} : null)
+  setUsername(tgUser?.username ? '@${tgUser.username}' : null)
   setIsReady(true)
   return
 }
