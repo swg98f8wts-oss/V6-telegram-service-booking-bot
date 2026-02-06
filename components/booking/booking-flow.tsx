@@ -81,48 +81,56 @@ export function BookingFlow() {
   }
 
   const handleConfirm = async () => {
-    if (!selectedMaster || !selectedService || !selectedDate || !selectedTime) {
+  if (
+    !selectedMaster ||
+    !selectedService ||
+    !selectedDate ||
+    !selectedTime ||
+    !user
+  ) {
+    setError('Не удалось определить пользователя')
+    return
+  }
+
+  setIsSubmitting(true)
+  setError(null)
+
+  try {
+    const response = await fetch('/api/book', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        masterId: selectedMaster.id,
+        date: selectedDate,
+        time: selectedTime,
+        serviceId: selectedService.id,
+
+        userId: user.id,
+        userName: user.name,
+        userUsername: user.username,
+        userPlatform: platform,
+
+        masterName: selectedMaster.name,
+        serviceName: selectedService.name,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      setError(result?.error || 'Произошла ошибка. Попробуйте ещё раз.')
       return
     }
 
-    setIsSubmitting(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          masterId: selectedMaster.id,
-          date: selectedDate,
-          time: selectedTime,
-          serviceId: selectedService.id,
-          userId,
-          userName,
-          userUsername,
-          userPlatform: platform,
-          masterName: selectedMaster.name,
-          serviceName: selectedService.name,
-        }),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setBooking(result)
-        setStep('success')
-      } else if (response.status === 409) {
-        setError('Этот слот уже занят. Пожалуйста, выберите другое время.')
-        setStep('time')
-        setSelectedTime(null)
-      } else {
-        setError('Произошла ошибка. Попробуйте еще раз.')
-      }
-    } catch {
-      setError('Произошла ошибка. Попробуйте еще раз.')
-    } finally {
-      setIsSubmitting(false)
-    }
+    setBooking(result)
+    setStep('success')
+  } catch (e) {
+    console.error('BOOKING CLIENT ERROR:', e)
+    setError('Произошла ошибка. Попробуйте ещё раз.')
+  } finally {
+    setIsSubmitting(false)
   }
+}
 
   if (!isReady) {
     return (
