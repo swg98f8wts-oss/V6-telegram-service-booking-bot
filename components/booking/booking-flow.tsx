@@ -92,11 +92,11 @@ export function BookingFlow() {
     return
   }
 
-  const userId = String(user.id)
-  const userName =
-    [user.firstName, user.lastName].filter(Boolean).join(' ') ||
-    user.username ||
-    'Клиент'
+  const userId = user?.id ? String(user.id) : null
+const userName =
+  [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+  user?.username ||
+  'Клиент'
 
   setIsSubmitting(true)
   setError(null)
@@ -113,8 +113,8 @@ export function BookingFlow() {
 
         userId,
         userName,
-        userUsername: user.username || null,
-        userPlatform: platform,
+        userUsername: user?.username || null,
+  userPlatform: platform,
 
         masterName: selectedMaster.name,
         serviceName: selectedService.name,
