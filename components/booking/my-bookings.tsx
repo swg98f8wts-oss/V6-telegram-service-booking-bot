@@ -6,9 +6,9 @@ import { Calendar, Clock, X, AlertCircle } from 'lucide-react'
 
 import { Booking } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { usePlatform } from '@/hooks/use-platform'
 
 interface MyBookingsProps {
-  userId: string | number | null | undefined
   onClose: () => void
 }
 
@@ -45,9 +45,11 @@ function formatDateRu(dateStr?: string): string {
   return `${day} ${MONTHS_RU_GEN[month - 1]}`
 }
 
-export function MyBookings({ userId, onClose }: MyBookingsProps) {
-  const normalizedUserId = userId ? String(userId) : null
-  const shouldFetch = Boolean(normalizedUserId)
+export function MyBookings({ onClose }: MyBookingsProps) {
+  const { user, isReady } = usePlatform()
+
+  const userId = user?.id ? String(user.id) : null
+  const shouldFetch = isReady && Boolean(userId)
 
   const {
     data: bookings = [],
@@ -55,7 +57,7 @@ export function MyBookings({ userId, onClose }: MyBookingsProps) {
     error,
   } = useSWR<Booking[]>(
     shouldFetch
-      ? `/api/bookings?userId=${normalizedUserId}`
+      ? `/api/bookings?userId=${userId}`
       : null,
     fetcher
   )
@@ -64,18 +66,18 @@ export function MyBookings({ userId, onClose }: MyBookingsProps) {
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null)
 
   const handleCancel = async (bookingId: string) => {
-    if (!normalizedUserId) return
+    if (!userId) return
 
     setCancelingId(bookingId)
 
     try {
       const response = await fetch(
-        `/api/bookings?bookingId=${bookingId}&userId=${normalizedUserId}`,
+        `/api/bookings?bookingId=${bookingId}&userId=${userId}`,
         { method: 'DELETE' }
       )
 
       if (response.ok) {
-        mutate(`/api/bookings?userId=${normalizedUserId}`)
+        mutate(`/api/bookings?userId=${userId}`)
       }
     } finally {
       setCancelingId(null)
@@ -102,7 +104,16 @@ export function MyBookings({ userId, onClose }: MyBookingsProps) {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {!normalizedUserId ? (
+        {!isReady ? (
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className="h-32 rounded-xl bg-secondary animate-pulse"
+              />
+            ))}
+          </div>
+        ) : !userId ? (
           <div className="text-center py-12 text-muted-foreground">
             <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p>Не удалось определить пользователя</p>
